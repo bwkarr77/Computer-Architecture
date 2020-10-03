@@ -1,4 +1,5 @@
 """CPU functionality."""
+# to run in terminal, type: py ls8.py examples/mult.ls8
 
 import sys
 
@@ -15,16 +16,14 @@ class CPU:
     def __init__(self):
         """Construct a new CPU."""
         self.ram = [0] * 256  # 256 bytes of RAM
-        self.reg = [0] * 8  #
+        self.registers = [0] * 8  #
         self.pc = 0  # program counter
 
     def load(self):
         """Load a program into memory."""
 
         # address = 0
-        #
-        # # For now, we've just hardcoded a program:
-        #
+        # For now, we've just hardcoded a program:
         # program = [
         #     # From print8.ls8
         #     0b10000010, # LDI R0,8
@@ -46,9 +45,10 @@ class CPU:
         try:
             address = 0
             with open(sys.argv[1]) as f:
+                # print('sys: ', sys.argv)  # sys.argv = ['ls8.py', 'examples/<filename>']
                 for line in f:
-                    split_line = line.split('#')
-                    code_val = split_line[0].strip()
+                    # separate each line into the binary code from the file
+                    code_val = line.split('#')[0].strip()   # ex: 100000010
 
                     if code_val == "":
                         continue
@@ -72,8 +72,10 @@ class CPU:
         """ALU operations."""
 
         if op == "ADD":
-            self.reg[reg_a] += self.reg[reg_b]
+            self.registers[reg_a] += self.registers[reg_b]
         #elif op == "SUB": etc
+        elif op == "MUL":
+            self.registers[reg_a] *= self.registers[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -93,17 +95,17 @@ class CPU:
         ), end='')
 
         for i in range(8):
-            print(" %02X" % self.reg[i], end='')
+            print(" %02X" % self.registers[i], end='')
 
         print()
 
     def ram_read(self, MAR):
         # MAR (Memory Address Register) = address this is read/written to
-        print(self.ram[MAR])
+        # print('ram_read: ', self.ram[MAR])
         # returns the data that is stored inside RAM at the MAR (memory access) location (typically pc)
         return self.ram[MAR]
 
-    def ram_write(self, MDR, MAR):
+    def ram_write(self, MAR, MDR):
         # MAR (Memory Address Register) = address this is read/written to
         # MDR (Memory Data Register) = data to read/write
         self.ram[MAR] = MDR
@@ -111,6 +113,7 @@ class CPU:
     def run(self):
         """Run the CPU."""
         running = True
+        print('running program...')
 
         while running:
             # Instruction Register (IR) is where we store the result from ram_read
@@ -119,20 +122,28 @@ class CPU:
             # read and save the bytes from the next 2 RAM locations after pc location.
             # *pc is the 'starting' point/signal, and the next 2 are the data we want to utilize
             op_1 = self.ram_read(self.pc + 1)
-            op_2 = self.ram_read(self.pc + 1)
+            op_2 = self.ram_read(self.pc + 2)
 
             if IR == HLT:  # HALT/exit loop
                 running = False
-
-            elif IR == PRN:  # PRINT the register
-                print(self.reg[op_1])
                 self.pc += 1
 
-            elif IR == LDI:  # LOAD
-                self.reg[op_1] = op_2
+            elif IR == PRN:  # PRINT the register
+                print(self.registers[op_1])
+                # self.pc += 1
                 self.pc += 2
 
-            else:
-                print('unknown command')
+            elif IR == LDI:  # LOAD
+                self.registers[op_1] = op_2
+                # self.pc += 2
+                self.pc += 3
 
-            self.pc += 1
+            elif IR == MUL:
+                self.registers[op_1] *= self.registers[op_2]
+                # self.pc += 2
+                self.pc += 3
+
+            else:
+                sys.exit()
+
+            # self.pc += 1
