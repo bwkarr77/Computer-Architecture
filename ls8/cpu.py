@@ -11,6 +11,11 @@ MULT    = 0b10100010    # MULTIPLY NUMBERS TOGETHER
 PUSH    = 0b01000101    # PUSH ONTO STACK
 POP     = 0b01000110    # POP OFF THE STACK
 ADD     = 0b10100110    # ADD NUMBERS TOGETHER
+CALL    = 0b01010000    # CALL
+RET     = 0b00010001    # RET
+
+OP1     = 0b10101010
+OP2     = 0b11110000
 
 
 class CPU:
@@ -22,6 +27,18 @@ class CPU:
         self.registers = [0] * 8  # registers 0:7 are saved for quick access
         self.registers[7] = 0xF4  # 244
         self.pc = 0  # program counter/pointer
+
+        # ____Branch Tables____
+        self.branchtable = {}
+        self.branchtable[LOAD] = self.ldi
+        self.branchtable[PRINT] = self.prn
+        self.branchtable[HALT] = self.hlt
+        self.branchtable[MULT] = self.mul
+        self.branchtable[PUSH] = self.push
+        self.branchtable[POP] = self.pop
+        self.branchtable[ADD] = self.add
+        self.branchtable[CALL] = self.call
+        self.branchtable[RET] = self.ret
 
     def load(self):
         """Load a program into memory."""
@@ -125,7 +142,12 @@ class CPU:
 
             num_args = IR >> 6  # returns 2 for commands>2 digits, 1 for commands>1 digit, 0 for commands==1 digit
 
-            # print('IR: ', IR)
+            try:
+                self.branchtable[IR]()
+            except KeyError:
+                print(f'KeyError at {self.registers[IR]}')
+                sys.exit(1)
+
 
             if IR == HALT:  # HALT/exit loop
                 running = False
@@ -194,10 +216,91 @@ class CPU:
 
                 self.registers[7] += 1
 
-                self.pc += 1
+                # self.pc += 1
+
+            elif IR == RET:
+                print('elif RET')
+                SP = self.registers[7]
+                return_address = self.ram[SP]
+
+                self.pc = return_address
+
+                self.registers[7] += 1
+
+            elif IR == CALL:
+                # # save the register (aka 'spot') to "return" back to after CALL
+                # reg_idx = self.ram_read(self.pc + 1)
+                # # print('elif CALL: ', self.pc+1, reg_idx, self.registers)
+                #
+                # #
+                # self.registers[7] -= 1
+                # # SP = self.registers[7]
+                #
+                # self.ram[self.registers[7]] = self.pc + 2
+                #
+                # # print('test: ', reg_idx, self.registers, self.registers[1])
+                # # self.pc += self.registers[reg_idx]
+                # self.pc += 1
+
+                # lesson...
+                # save the return address
+                return_address = self.pc + 2  # supposed to be pc+2, but there's the auto pc+1
+
+                # push command address after CALL onto stack
+                # 1. decrement the SP, then store the value at address
+                self.registers[7] -= 1
+                # 2. get address, and store return_address at SP address:
+                SP = self.registers[7]
+                self.ram_write(SP, return_address)
+
+                # retrieve address from register
+                reg_idx = self.pc + 1
+                # look into register to find address
+                subroutine_address = self.registers[reg_idx]
+
+                self.pc = subroutine_address
 
             else:
                 print('else: ', IR)
                 sys.exit()
 
-            self.pc += 1
+            # skip this IF setting pc directly:
+            sets_pc_directly = ((IR >> 4) & 0b0001) == 1
+            if not sets_pc_directly:
+                self.pc += 1
+            # self.pc += num_args
+
+    def handle_op1(self, a):
+        print("op 1: " + a)
+
+    def handle_op2(self, a):
+        print("op 2: " + a)
+
+    # Branch Table Commands
+
+    def ldi(self):
+        print('ldi')
+
+    def prn(self):
+        print('prn')
+
+    def hlt(self):
+        print('hlt')
+
+    def add(self):
+        print('add')
+
+    def mul(self):
+        print('mul')
+
+    def push(self):
+        print('push')
+
+    def pop(self):
+        print('pop')
+
+    def call(self):
+        print('call')
+
+    def ret(self):
+        print('ret')
