@@ -27,6 +27,7 @@ class CPU:
         self.registers = [0] * 8  # registers 0:7 are saved for quick access
         self.registers[7] = 0xF4  # 244
         self.pc = 0  # program counter/pointer
+        self.running = False
 
         # ____Branch Tables____
         self.branchtable = {}
@@ -134,111 +135,112 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        running = True
+        self.running = True
 
-        while running:
+        while self.running:
             # Instruction Register (IR) is where we store the result from ram_read
             IR = self.ram_read(self.pc)  # should be the "command"/instructions
 
             num_args = IR >> 6  # returns 2 for commands>2 digits, 1 for commands>1 digit, 0 for commands==1 digit
 
-            # initiate the branchTable stuff...
-            # try:
-            #     self.branchtable[IR]()
-            #     # print('IR: ', IR)
-            # except KeyError:
-            #     print(f'KeyError at {self.registers[IR]}')
-            #     sys.exit(1)
+            # implement the branchTable stuff...
+            try:
+                self.branchtable[IR]()
+                # print('IR: ', IR)
+            except KeyError:
+                print(f'KeyError at {self.registers[IR]}')
+                sys.exit(1)
 
-            if IR == HALT:  # HALT/exit loop
-                running = False
-
-            elif IR == PRINT:  # PRINT the register
-                reg_idx = self.ram_read(self.pc + 1)
-                print(self.registers[reg_idx])
-
-            elif IR == LOAD:  # LOAD
-                # get the register index (pc + 1) and the value (pc + 2)
-                reg_idx = self.ram_read(self.pc + 1)
-                value = self.ram_read(self.pc + 2)
-
-                # save the value into the correct register
-                self.registers[reg_idx] = value
-
-            elif IR == ADD:
-                # pull out arguments
-                reg_idx_1 = self.ram_read(self.pc + 1)
-                reg_idx_2 = self.ram_read(self.pc + 2)
-
-                # add register 2 to register 1
-                self.registers[reg_idx_1] = self.registers[reg_idx_1] + self.registers[reg_idx_2]
-
-            elif IR == MULT:
-                # pull out arguments
-                reg_idx_1 = self.ram_read(self.pc + 1)
-                reg_idx_2 = self.ram_read(self.pc + 2)
-
-                self.registers[reg_idx_1] *= self.registers[reg_idx_2]
-
-            elif IR == PUSH:
-                # **SP = Stack Pointer
-                # 1. Decrement the 'SP'
-                self.registers[7] -= 1  # decrement the 'SP' by 1
-
-                # 2. Copy the value in the given register to the address pointed to by "SP"
-                reg_idx = self.ram_read(self.pc + 1)
-                value = self.registers[reg_idx]
-
-                # 3.
-                SP = self.registers[7]
-                self.ram_write(SP, value)
-
-            elif IR == POP:
-                # 1. Copy the value from the address pointed to by "SP" to given register
-                # address of SP, its value at the address, and the register idx
-                SP = self.registers[7]
-                value = self.ram_read(SP)
-                reg_idx = self.ram_read(self.pc + 1)
-
-                # place value into the register idx
-                self.registers[reg_idx] = value
-
-                self.registers[7] += 1
-
-            elif IR == CALL:
-                # # save the register/return address to "return" back to after CALL
-                # save the return address
-                return_address = self.pc + 2
-
-                # push command address after CALL onto stack
-                # 1. decrement the SP, then store the value at address
-                self.registers[7] -= 1
-                # 2. get address, and store return_address at SP address:
-                SP = self.registers[7]
-                self.ram[SP] = return_address
-
-                # retrieve address from register
-                reg_idx = self.ram[self.pc + 1]
-                # look into register to find address
-                subroutine_address = self.registers[reg_idx]
-
-                self.pc = subroutine_address
-
-            elif IR == RET:
-                SP = self.registers[7]
-                return_address = self.ram_read(SP)
-
-                self.pc = return_address
-
-                self.registers[7] += 1
-
-            else:
-                print('else: ', IR)
-                sys.exit()
+            # if IR == HALT:  # HALT/exit loop
+            #     running = False
+            #
+            # elif IR == PRINT:  # PRINT the register
+            #     reg_idx = self.ram_read(self.pc + 1)
+            #     print(self.registers[reg_idx])
+            #
+            # elif IR == LOAD:  # LOAD
+            #     # get the register index (pc + 1) and the value (pc + 2)
+            #     reg_idx = self.ram_read(self.pc + 1)
+            #     value = self.ram_read(self.pc + 2)
+            #
+            #     # save the value into the correct register
+            #     self.registers[reg_idx] = value
+            #
+            # elif IR == ADD:
+            #     # pull out arguments
+            #     reg_idx_1 = self.ram_read(self.pc + 1)
+            #     reg_idx_2 = self.ram_read(self.pc + 2)
+            #
+            #     # add register 2 to register 1
+            #     self.registers[reg_idx_1] = self.registers[reg_idx_1] + self.registers[reg_idx_2]
+            #
+            # elif IR == MULT:
+            #     # pull out arguments
+            #     reg_idx_1 = self.ram_read(self.pc + 1)
+            #     reg_idx_2 = self.ram_read(self.pc + 2)
+            #
+            #     self.registers[reg_idx_1] *= self.registers[reg_idx_2]
+            #
+            # elif IR == PUSH:
+            #     # **SP = Stack Pointer
+            #     # 1. Decrement the 'SP'
+            #     self.registers[7] -= 1  # decrement the 'SP' by 1
+            #
+            #     # 2. Copy the value in the given register to the address pointed to by "SP"
+            #     reg_idx = self.ram_read(self.pc + 1)
+            #     value = self.registers[reg_idx]
+            #
+            #     # 3.
+            #     SP = self.registers[7]
+            #     self.ram_write(SP, value)
+            #
+            # elif IR == POP:
+            #     # 1. Copy the value from the address pointed to by "SP" to given register
+            #     # address of SP, its value at the address, and the register idx
+            #     SP = self.registers[7]
+            #     value = self.ram_read(SP)
+            #     reg_idx = self.ram_read(self.pc + 1)
+            #
+            #     # place value into the register idx
+            #     self.registers[reg_idx] = value
+            #
+            #     self.registers[7] += 1
+            #
+            # elif IR == CALL:
+            #     # # save the register/return address to "return" back to after CALL
+            #     # save the return address
+            #     return_address = self.pc + 2
+            #
+            #     # push command address after CALL onto stack
+            #     # 1. decrement the SP, then store the value at address
+            #     self.registers[7] -= 1
+            #     # 2. get address, and store return_address at SP address:
+            #     SP = self.registers[7]
+            #     self.ram[SP] = return_address
+            #
+            #     # retrieve address from register
+            #     reg_idx = self.ram[self.pc + 1]
+            #     # look into register to find address
+            #     subroutine_address = self.registers[reg_idx]
+            #
+            #     self.pc = subroutine_address
+            #
+            # elif IR == RET:
+            #     SP = self.registers[7]
+            #     return_address = self.ram_read(SP)
+            #
+            #     self.pc = return_address
+            #
+            #     self.registers[7] += 1
+            #
+            # else:
+            #     print('else: ', IR)
+            #     sys.exit()
 
             # skip this IF setting pc directly:
             sets_pc_directly = ((IR >> 4) & 0b0001) == 1
             if not sets_pc_directly:
+                # print('change pc: ', self.pc, num_args)
                 self.pc += 1 + num_args
 
     def handle_op1(self, a):
@@ -249,29 +251,86 @@ class CPU:
 
     # Branch Table Commands
 
-    def ldi(self):
-        print('ldi')
+    def ldi(self):   # LOAD
+        # get the register index (pc + 1) and the value (pc + 2)
+        reg_idx = self.ram_read(self.pc + 1)
+        value = self.ram_read(self.pc + 2)
 
-    def prn(self):
-        print('prn')
+        # save the value into the correct register
+        self.registers[reg_idx] = value
+
+    def prn(self):  # PRINT values at register
+        reg_idx = self.ram_read(self.pc + 1)
+        print(self.registers[reg_idx])
+        # print('prn')
 
     def hlt(self):
-        print('hlt')
+        # Exit Loop
+        self.running = False
 
     def add(self):
-        print('add')
+        # pull out arguments
+        reg_idx_1 = self.ram_read(self.pc + 1)
+        reg_idx_2 = self.ram_read(self.pc + 2)
+
+        # add register 2 to register 1
+        self.registers[reg_idx_1] = self.registers[reg_idx_1] + self.registers[reg_idx_2]
 
     def mul(self):
-        print('mul')
+        # pull out arguments
+        reg_idx_1 = self.ram_read(self.pc + 1)
+        reg_idx_2 = self.ram_read(self.pc + 2)
+
+        self.registers[reg_idx_1] *= self.registers[reg_idx_2]
 
     def push(self):
-        print('push')
+        # **SP = Stack Pointer
+        # 1. Decrement the 'SP'
+        self.registers[7] -= 1  # decrement the 'SP' by 1
+
+        # 2. Copy the value in the given register to the address pointed to by "SP"
+        reg_idx = self.ram_read(self.pc + 1)
+        value = self.registers[reg_idx]
+
+        # 3.
+        SP = self.registers[7]
+        self.ram_write(SP, value)
 
     def pop(self):
-        print('pop')
+        # 1. Copy the value from the address pointed to by "SP" to given register
+        # address of SP, its value at the address, and the register idx
+        SP = self.registers[7]
+        value = self.ram_read(SP)
+        reg_idx = self.ram_read(self.pc + 1)
+
+        # place value into the register idx
+        self.registers[reg_idx] = value
+
+        self.registers[7] += 1
 
     def call(self):
-        print('call')
+        # # save the register/return address to "return" back to after CALL
+        # save the return address
+        return_address = self.pc + 2
+
+        # push command address after CALL onto stack
+        # 1. decrement the SP, then store the value at address
+        self.registers[7] -= 1
+        # 2. get address, and store return_address at SP address:
+        SP = self.registers[7]
+        self.ram[SP] = return_address
+
+        # retrieve address from register
+        reg_idx = self.ram[self.pc + 1]
+        # look into register to find address
+        subroutine_address = self.registers[reg_idx]
+
+        self.pc = subroutine_address
 
     def ret(self):
-        print('ret')
+        SP = self.registers[7]
+        return_address = self.ram_read(SP)
+
+        self.pc = return_address
+
+        self.registers[7] += 1
